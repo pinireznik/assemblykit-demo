@@ -50,6 +50,9 @@ AssemblyKit analyses the request before writing any code:
 The demo then shows the manufactured component implemented, tests passing, and
 the feature live in the browser.
 
+See [`assemblykit/generated/component-graph.md`](assemblykit/generated/component-graph.md)
+for the full Mermaid assembly flow diagram.
+
 ---
 
 ## Repository layout
@@ -167,6 +170,7 @@ node assemblykit/scripts/assemblykit.mjs manufacture company.stale_filter
 | `assemblykit/catalog/local.components.yaml` | All catalogued components in the CRM |
 | `assemblykit/catalog/registry.components.yaml` | Illustrative Verified Component Registry |
 | `assemblykit/manifests/stale-company-dashboard.manifest.yaml` | Assembly Manifest for the demo feature |
+| `assemblykit/generated/component-graph.md` | Mermaid assembly flow diagram |
 | `assemblykit/generated/build-plan.md` | What gets built and how |
 | `assemblykit/generated/manufacturing-plan.md` | Net-new code specification |
 | `assemblykit/generated/traceability.md` | Full component audit trail |

@@ -98,6 +98,20 @@ cat assemblykit/manifests/stale-company-dashboard.manifest.yaml
 > "The Assembly Manifest is written before any code is touched. It is the
 > contract between the AI agent and the developer."
 
+Open the assembly graph:
+
+```bash
+cat assemblykit/generated/component-graph.md
+```
+
+Point out (or render in a Markdown viewer):
+- Green nodes — reused from the local catalog
+- Yellow node — `company.stale_filter`, the one manufactured component
+- Blue node — the Assembly Manifest connecting request to components
+- Data flows: `company.list` and `employee.count_by_company` feed into `company.stale_filter`, which feeds `dashboard.card`
+
+> "This is the complete picture of the feature. Three reuses, one manufacture, one assembly."
+
 ---
 
 ## Step 6 — Show the manufactured component  *(~30 sec)*
