@@ -52,7 +52,7 @@ Every decision below is recorded in that file.
 
 ---
 
-## Manufactured component
+## Manufactured Component
 
 ### `company.stale_filter`
 - **What it does:** Filters a list of companies to those not updated in N days and above a headcount minimum.

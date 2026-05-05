@@ -60,7 +60,7 @@ assemblykit-demo/
 ├── assemblykit/
 │   ├── catalog/               Component catalogs
 │   │   ├── local.components.yaml     CRM capabilities
-│   │   └── registry.components.yaml  Verified shared registry
+│   │   └── registry.components.yaml  Verified Component Registry
 │   ├── manifests/             Assembly Manifests (one per feature)
 │   ├── generated/             Build plan, manufacturing plan, traceability
 │   └── scripts/
@@ -165,7 +165,7 @@ node assemblykit/scripts/assemblykit.mjs manufacture company.stale_filter
 | File | Purpose |
 |---|---|
 | `assemblykit/catalog/local.components.yaml` | All catalogued components in the CRM |
-| `assemblykit/catalog/registry.components.yaml` | Illustrative verified registry |
+| `assemblykit/catalog/registry.components.yaml` | Illustrative Verified Component Registry |
 | `assemblykit/manifests/stale-company-dashboard.manifest.yaml` | Assembly Manifest for the demo feature |
 | `assemblykit/generated/build-plan.md` | What gets built and how |
 | `assemblykit/generated/manufacturing-plan.md` | Net-new code specification |
