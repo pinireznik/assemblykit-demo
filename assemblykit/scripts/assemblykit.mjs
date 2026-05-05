@@ -3,11 +3,11 @@
  * AssemblyKit CLI
  *
  * Commands:
- *   list                               List local components by status
- *   registry                           Show verified registry components
- *   build [--with-registry] "<request>" Analyse a feature request
- *   manufacture <component-id>         Show manufacturing plan for a missing component
- *   explain                            Print the AssemblyKit philosophy
+ *   explain                                     Print the AssemblyKit philosophy
+ *   list                                        List local components by status
+ *   registry                                    Show Verified Component Registry
+ *   build [--with-registry] "<request>"         Analyse a feature request
+ *   manufacture <component-id>                  Show manufacturing plan (or implemented details)
  */
 
 import { readFileSync, existsSync } from 'fs';
@@ -37,14 +37,18 @@ function box(title) {
 }
 
 function section(label, note = '') {
-  const noteText = note ? `  ${D}─  ${note}${R}` : '';
+  const noteText = note ? `  ${D}${note}${R}` : '';
   console.log(`\n  ${B}${label}${R}${noteText}`);
-  const bareLen = label.length + (note ? note.length + 5 : 0);
-  console.log('  ' + '─'.repeat(Math.max(bareLen, 40)));
+  const bareLen = label.length + (note ? note.length + 2 : 0);
+  console.log('  ' + '─'.repeat(Math.max(bareLen, 44)));
 }
 
 function kv(key, value, pad = 18) {
   console.log(`    ${D}${key.padEnd(pad)}${R}${value}`);
+}
+
+function rule() {
+  console.log(`\n  ${'─'.repeat(66)}`);
 }
 
 // ── File helpers ──────────────────────────────────────────────────────────────
@@ -60,25 +64,24 @@ function readFile(rel) {
 
 // ── YAML parsers ──────────────────────────────────────────────────────────────
 
-// Split a catalog YAML on "  - id:" boundaries; return array of component objects.
 function parseComponents(yaml) {
   return yaml.split(/\n  - id:/).slice(1).map(block => {
-    const id        = block.split('\n')[0].trim();
-    const kind      = (block.match(/\bkind:\s+(\S+)/)               || [])[1] ?? '—';
-    const status    = (block.match(/\bstatus:\s+(\S+)/)             || [])[1] ?? '—';
-    const mfgTarget = (block.match(/manufacturing_target:\s+(\S+)/) || [])[1] ?? null;
+    const id             = block.split('\n')[0].trim();
+    const kind           = (block.match(/\bkind:\s+(\S+)/)               || [])[1] ?? '—';
+    const status         = (block.match(/\bstatus:\s+(\S+)/)             || [])[1] ?? '—';
+    const implementation = (block.match(/\bimplementation:\s+(\S+)/)     || [])[1] ?? null;
+    const mfgTarget      = (block.match(/manufacturing_target:\s+(\S+)/) || [])[1] ?? null;
 
-    // Description: join all continuation lines of a block scalar (>), or take inline value.
+    // Description: collect block-scalar continuation lines (6-space indent) or inline value.
     let description = '';
     const di = block.indexOf('description:');
     if (di !== -1) {
       const after = block.slice(di);
       if (/^description:\s*>/.test(after)) {
-        // Block scalar continuation lines are indented 6 spaces (4 for key + 2 more).
         const contLines = [];
         for (const line of after.split('\n').slice(1)) {
           if (/^\s{6}/.test(line)) contLines.push(line.trim());
-          else if (line.trim()) break;  // back to key level — stop
+          else if (line.trim()) break;
         }
         description = contLines.join(' ');
       } else {
@@ -86,57 +89,89 @@ function parseComponents(yaml) {
       }
     }
 
-    return { id, kind, status, description, mfgTarget, raw: block };
+    return { id, kind, status, description, implementation, mfgTarget, raw: block };
   });
 }
 
-// Parse inputs list from a component block.
 function parseInputs(block) {
-  const section = block.split('\n    outputs:')[0].split('\n    inputs:')[1] ?? '';
-  if (!section.trim() || section.trim().startsWith('[]')) return [];
-  return section.split('      - name:').slice(1).map(item => {
+  const sec = block.split('\n    outputs:')[0].split('\n    inputs:')[1] ?? '';
+  if (!sec.trim() || sec.trim().startsWith('[]')) return [];
+  return sec.split('      - name:').slice(1).map(item => {
     const name     = item.split('\n')[0].trim();
-    const type     = (item.match(/type:\s+(.+)/)    || [])[1]?.trim() ?? '—';
+    const type     = (item.match(/type:\s+(.+)/)     || [])[1]?.trim() ?? '—';
     const required = !item.includes('required: false');
-    const def      = (item.match(/default:\s+(\S+)/)|| [])[1] ?? null;
+    const def      = (item.match(/default:\s+(\S+)/) || [])[1] ?? null;
     return { name, type, required, default: def };
   });
 }
 
-// Parse outputs list from a component block.
 function parseOutputs(block) {
-  const section = block.split('\n    effects:')[0].split('\n    outputs:')[1] ?? '';
-  return section.split('      - name:').slice(1).map(item => {
+  const sec = block.split('\n    effects:')[0].split('\n    outputs:')[1] ?? '';
+  return sec.split('      - name:').slice(1).map(item => {
     const name = item.split('\n')[0].trim();
     const type = (item.match(/type:\s+(.+)/) || [])[1]?.trim() ?? '—';
     return { name, type };
   });
 }
 
-// Parse quality block from a registry component block.
-function parseQuality(block) {
+function parseRegistryQuality(block) {
   const q = block.split('\n    composition_notes:')[0].split('\n    quality:')[1] ?? '';
   return {
-    verification: (q.match(/verification:\s+(\S+)/)  || [])[1] ?? '—',
-    tests:        (q.match(/tests:\s+(\d+)/)          || [])[1] ?? '—',
-    benchmark:    (q.match(/benchmark:\s+"?(.+?)"?\s*\n/)|| [])[1]?.trim() ?? '—',
-    security:     (q.match(/security:\s+(\S+)/)       || [])[1] ?? '—',
+    verification: (q.match(/verification:\s+(\S+)/)           || [])[1] ?? '—',
+    tests:        (q.match(/tests:\s+(\d+)/)                   || [])[1] ?? '—',
+    benchmark:    (q.match(/benchmark:\s+"?(.+?)"?\s*\n/)       || [])[1]?.trim() ?? '—',
+    security:     (q.match(/security:\s+(\S+)/)                || [])[1] ?? '—',
   };
 }
 
-// Parse composition_notes list from a component block.
-function parseNotes(block) {
-  const section = block.split('\n    composition_notes:')[1] ?? '';
-  return [...section.matchAll(/- (.+)/g)].map(m => m[1].trim());
+function parseLocalQuality(block) {
+  const sec = block.split('\n    quality:')[1] ?? '';
+  if (!sec.trim()) return null;
+  return {
+    tests:    (sec.match(/tests:\s+(\d+)/)     || [])[1] ?? null,
+    testFile: (sec.match(/test_file:\s+(\S+)/) || [])[1] ?? null,
+  };
 }
 
-// Parse test ids from the quality section of the manifest.
+function parseNotes(block) {
+  const sec = block.split('\n    composition_notes:')[1] ?? '';
+  return [...sec.matchAll(/- (.+)/g)].map(m => m[1].trim());
+}
+
 function parseManifestTests(yaml) {
-  const section = yaml.split(/^quality:/m)[1]?.split(/^metrics:/m)[0] ?? '';
-  return [...section.matchAll(/- id:\s+(\S+)/g)].map(m => m[1]);
+  const sec = yaml.split(/^quality:/m)[1]?.split(/^metrics:/m)[0] ?? '';
+  return [...sec.matchAll(/- id:\s+(\S+)/g)].map(m => m[1]);
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
+
+function cmdExplain() {
+  box('AssemblyKit');
+
+  console.log(`
+  AssemblyKit separates ${B}manufacturing${R} from ${B}assembly${R}.
+
+  Most AI tools receive a feature request and immediately generate code —
+  even when large parts of the feature already exist in the codebase.
+
+  AssemblyKit enforces a different order of operations:
+
+    ${B}1.${R}  Identify what the feature needs.
+    ${B}2.${R}  Search the ${C}local catalog${R} for existing components.
+    ${B}3.${R}  Search the ${C}Verified Component Registry${R} for shared components.
+    ${B}4.${R}  ${Y}Manufacture${R} only what cannot be found.
+    ${B}5.${R}  ${G}Assemble${R} — wire the pieces together.
+
+  Every manufactured component is catalogued.
+  Over time, more features can be assembled entirely from existing parts.
+  Registry components raise the floor — each one is one less thing to build.
+`);
+
+  rule();
+  console.log(`  ${B}The best AI-generated code is the code it did not need to generate.${R}`);
+  rule();
+  console.log();
+}
 
 function cmdList() {
   box('AssemblyKit — Local Component Catalog');
@@ -147,21 +182,21 @@ function cmdList() {
   const idW        = Math.max(...components.map(c => c.id.length)) + 2;
   const kindW      = 8;
 
-  section('EXISTING', 'available for reuse');
+  section('Existing components', 'available for reuse');
   for (const c of existing) {
-    const id   = c.id.padEnd(idW);
-    const kind = c.kind.padEnd(kindW);
-    console.log(`  ${G}✓${R}  ${B}${id}${R}  ${D}${kind}${R}  ${c.description}`);
+    console.log(`  ${G}✓${R}  ${B}${c.id.padEnd(idW)}${R}  ${D}${c.kind.padEnd(kindW)}${R}  ${c.description}`);
   }
 
-  section('MISSING', 'manufacturing targets');
-  for (const c of missing) {
-    const id   = c.id.padEnd(idW);
-    const kind = c.kind.padEnd(kindW);
-    console.log(`  ${Y}✦${R}  ${B}${id}${R}  ${D}${kind}${R}  ${c.description}`);
+  if (missing.length > 0) {
+    section('Missing components', 'manufacturing targets');
+    for (const c of missing) {
+      console.log(`  ${Y}✦${R}  ${B}${c.id.padEnd(idW)}${R}  ${D}${c.kind.padEnd(kindW)}${R}  ${c.description}`);
+    }
   }
 
-  console.log(`\n  ${existing.length} existing  ·  ${missing.length} missing\n`);
+  console.log();
+  const missingNote = missing.length > 0 ? `  ·  ${Y}${missing.length} manufacturing target${missing.length > 1 ? 's' : ''}${R}` : '';
+  console.log(`  ${G}${existing.length} components available for reuse${R}${missingNote}\n`);
 }
 
 function cmdRegistry() {
@@ -169,13 +204,13 @@ function cmdRegistry() {
 
   const components = parseComponents(readFile('catalog/registry.components.yaml'));
 
-  section('AVAILABLE', 'registry-verified components');
+  section('Registry components', 'quality-gated and verified');
 
   for (const c of components) {
-    console.log(`\n  ${G}✓${R}  ${B}${c.id}${R}  ${D}${c.kind}  ·  ${c.status}${R}`);
+    console.log(`\n  ${G}✓${R}  ${B}${c.id}${R}  ${D}${c.kind}${R}`);
     console.log(`\n     ${c.description}`);
 
-    const q = parseQuality(c.raw);
+    const q = parseRegistryQuality(c.raw);
     console.log(`\n     ${B}Quality${R}`);
     console.log(`     ${D}Verification  ${R}${q.verification}`);
     console.log(`     ${D}Tests         ${R}${q.tests}`);
@@ -198,13 +233,11 @@ function cmdBuild(args) {
 
   box('AssemblyKit — Build Analysis');
 
-  // ── Request
-  section('Request');
+  section('Feature request');
   console.log(`\n  "${request}"\n`);
 
-  // ── Principle
   section('Principle');
-  console.log(`\n  ${C}Reuse before manufacture${R}\n`);
+  console.log(`\n  ${C}Reuse before manufacture.${R}\n`);
 
   // ── Local component search
   section('Component search', 'local catalog');
@@ -217,41 +250,42 @@ function cmdBuild(args) {
     { id: 'company.stale_filter', note: 'no component combines staleness + employee count' },
   ];
   const idW = Math.max(...[...found, ...missing].map(c => c.id.length)) + 2;
+
+  console.log();
   for (const c of found) {
-    console.log(`  ${G}✓${R}  ${B}${c.id.padEnd(idW)}${R}  ${D}found  ·  local${R}  ${c.note}`);
+    console.log(`  ${G}✓  Reuse${R}       ${B}${c.id.padEnd(idW)}${R}  ${D}local  ·  ${c.note}${R}`);
   }
   for (const c of missing) {
-    console.log(`  ${Y}✦${R}  ${B}${c.id.padEnd(idW)}${R}  ${Y}MISSING${R}  ${D}${c.note}${R}`);
+    console.log(`  ${Y}✦  Manufacture${R}  ${B}${c.id.padEnd(idW)}${R}  ${Y}missing${R}  ${D}${c.note}${R}`);
   }
 
   if (withRegistry) {
     // ── Registry search
-    section('Registry search', 'checking for missing components');
-    console.log(`  ${G}✓${R}  ${B}generic.stale_record_detector${R}  ${D}found  ·  registry${R}`);
-    console.log(`       ${D}Verified  ·  24 tests  ·  p95 < 10ms for 10k records  ·  security reviewed${R}`);
-    console.log(`       Covers timestamp filtering. Employee-count filter is handled at assembly level.`);
+    section('Registry search', 'Verified Component Registry');
+    console.log();
+    console.log(`  ${G}✓  Reuse${R}       ${B}generic.stale_record_detector${R}  ${D}registry${R}`);
+    console.log(`              ${D}verified  ·  24 tests  ·  p95 < 10ms  ·  security reviewed${R}`);
+    console.log(`              Covers timestamp filtering. Employee-count threshold applied at assembly.`);
 
-    // ── Updated assembly decision
-    section('Assembly decision', 'with registry');
-    kv('Reuse',        `${G}4${R}  (company.list, employee.count_by_company, dashboard.card, generic.stale_record_detector)`, 14);
-    kv('Manufacture',  `0`, 14);
-    kv('Reuse ratio',  `${G}${B}100%${R}`, 14);
+    section('Assembly decision', 'with Verified Component Registry');
+    console.log();
+    kv('Reuse',       `${G}4${R}  (company.list, employee.count_by_company, dashboard.card, generic.stale_record_detector)`, 14);
+    kv('Manufacture', `0`, 14);
+    kv('Reuse ratio', `${G}${B}100%${R}`, 14);
 
-    section('Note');
-    console.log(`\n  In this MVP the registry plan is illustrative.`);
-    console.log(`  The implemented app still uses the locally manufactured component`);
-    console.log(`  (${D}app/Services/StaleCompanyFilter.php${R}).\n`);
+    console.log(`\n  ${D}Note: in this MVP the registry plan is illustrative. The implemented app`);
+    console.log(`  uses the locally manufactured component (app/Services/StaleCompanyFilter.php).${R}\n`);
 
   } else {
-    // ── Assembly decision (local only)
     section('Assembly decision');
-    kv('Reuse',        `3  (company.list, employee.count_by_company, dashboard.card)`, 14);
-    kv('Manufacture',  `${Y}1${R}  (company.stale_filter)`, 14);
-    kv('Reuse ratio',  `${B}75%${R}`, 14);
+    console.log();
+    kv('Reuse',       `3  (company.list, employee.count_by_company, dashboard.card)`, 14);
+    kv('Manufacture', `${Y}1${R}  (company.stale_filter)`, 14);
+    kv('Reuse ratio', `${B}75%${R}`, 14);
 
-    // ── Generated artefacts
-    section('Generated artefacts');
-    console.log(`\n  ${D}→${R}  assemblykit/manifests/stale-company-dashboard.manifest.yaml`);
+    section('Assembly Manifest');
+    console.log();
+    console.log(`  ${D}→${R}  assemblykit/manifests/stale-company-dashboard.manifest.yaml`);
     console.log(`  ${D}→${R}  assemblykit/generated/build-plan.md`);
     console.log(`  ${D}→${R}  assemblykit/generated/manufacturing-plan.md\n`);
   }
@@ -259,7 +293,7 @@ function cmdBuild(args) {
 
 function cmdManufacture(componentId) {
   if (!componentId) {
-    console.error(`\n  Usage: node assemblykit.mjs manufacture <component-id>\n`);
+    console.error(`\n  Usage: assemblykit manufacture <component-id>\n`);
     process.exit(1);
   }
 
@@ -267,30 +301,46 @@ function cmdManufacture(componentId) {
   const component  = components.find(c => c.id === componentId);
 
   if (!component) {
-    console.error(`\n  Component not found in local catalog: ${componentId}\n`);
-    console.error(`  Run "node assemblykit.mjs list" to see available components.\n`);
+    console.error(`\n  Component not found in local catalog: ${componentId}`);
+    console.error(`  Run "assemblykit list" to see available components.\n`);
     process.exit(1);
   }
 
   if (component.status === 'existing') {
-    console.log(`\n  ${G}✓${R}  ${B}${componentId}${R} is already implemented.\n`);
-    console.log(`  ${D}No manufacturing needed — available for reuse.${R}\n`);
+    box(`AssemblyKit — Component: ${componentId}`);
+
+    section('Status');
+    console.log(`\n  ${G}✓${R}  ${B}${componentId}${R}  is implemented and catalogued.\n`);
+    kv('Kind',   component.kind);
+    if (component.implementation) kv('Implementation', `${C}${component.implementation}${R}`);
+
+    const q = parseLocalQuality(component.raw);
+    if (q?.tests) {
+      const fileNote = q.testFile ? `  ${D}${q.testFile}${R}` : '';
+      kv('Tests', `${q.tests}${fileNote}`);
+    }
+
+    if (component.description) {
+      console.log();
+      console.log(`    ${component.description}`);
+    }
+
+    console.log(`\n  ${G}No manufacturing needed — available for Reuse.${R}\n`);
     return;
   }
 
   box(`AssemblyKit — Manufacturing Plan: ${componentId}`);
 
-  // ── Overview
   section('Component');
-  kv('Status', `${Y}missing${R}  —  scheduled for manufacture`);
+  console.log();
+  kv('Status', `${Y}missing${R}  —  scheduled for Manufacture`);
   kv('Kind',   component.kind);
-  if (component.mfgTarget) kv('Target', `${C}${component.mfgTarget}${R}`);
+  if (component.mfgTarget) kv('Target file', `${C}${component.mfgTarget}${R}`);
   if (component.description) {
     console.log();
     console.log(`    ${component.description}`);
   }
 
-  // ── Contract
   const inputs  = parseInputs(component.raw);
   const outputs = parseOutputs(component.raw);
 
@@ -301,7 +351,9 @@ function cmdManufacture(componentId) {
     const nameW = Math.max(...inputs.map(i => i.name.length)) + 2;
     const typeW = Math.max(...inputs.map(i => i.type.length)) + 2;
     for (const inp of inputs) {
-      const req  = inp.required ? 'required' : `optional${inp.default !== null ? `  (default: ${inp.default})` : ''}`;
+      const req = inp.required
+        ? 'required'
+        : `optional${inp.default !== null ? `  (default: ${inp.default})` : ''}`;
       console.log(`    ${inp.name.padEnd(nameW)}  ${D}${inp.type.padEnd(typeW)}${R}  ${D}${req}${R}`);
     }
   }
@@ -318,7 +370,6 @@ function cmdManufacture(componentId) {
   console.log(`    ${D}writes   none${R}`);
   console.log(`    ${D}external none${R}`);
 
-  // ── Required tests (from manifest)
   section('Required tests');
   let tests = [];
   try {
@@ -327,40 +378,13 @@ function cmdManufacture(componentId) {
   } catch (_) { /* manifest may not exist */ }
 
   if (tests.length === 0) {
-    console.log(`\n    ${D}(no tests defined in manifest)${R}`);
+    console.log(`\n    ${D}(no tests defined in Assembly Manifest)${R}`);
   } else {
     console.log();
-    tests.forEach(t => console.log(`  ${Y}✗${R}  ${t}`));
+    tests.forEach(t => console.log(`  ${Y}○${R}  ${t}`));
   }
 
   console.log();
-}
-
-function cmdExplain() {
-  box('What is AssemblyKit?');
-
-  console.log(`
-  AssemblyKit separates ${B}manufacturing${R} from ${B}assembly${R}.
-
-  In traditional AI-assisted development, every feature request triggers
-  code generation — even for capabilities that already exist in the codebase.
-
-  AssemblyKit enforces a different order of operations:
-
-    ${B}1.${R}  Identify what the feature needs.
-    ${B}2.${R}  Search the ${C}local catalog${R} for existing components.
-    ${B}3.${R}  Search the ${C}verified registry${R} for shared components.
-    ${B}4.${R}  ${Y}Manufacture${R} only what cannot be found.
-    ${B}5.${R}  ${G}Assemble${R}: wire the pieces together.
-
-  Every manufactured component enters the catalog.
-  Over time, more features can be assembled entirely from existing parts.
-  Registry components raise the floor — each one is one less thing to build.
-
-  ${'─'.repeat(66)}
-  ${B}The best AI-generated code is the code it did not need to generate.${R}
-  ${'─'.repeat(66)}
-`);
 }
 
 function cmdUsage() {
@@ -368,26 +392,26 @@ function cmdUsage() {
   console.log(`
   ${B}Commands${R}
 
-    ${C}list${R}
-        List local components grouped by status (existing / missing).
+    ${C}explain${R}
+        Print the AssemblyKit philosophy and principle.
 
-    ${C}registry${R}
-        Show verified registry components and quality metadata.
+    ${C}list${R}
+        List local components grouped by status.
 
     ${C}build${R} ${D}"<feature request>"${R}
-        Analyse a request: search components, decide reuse vs manufacture,
-        show generated artefacts.
+        Analyse a request: search components, decide Reuse vs Manufacture,
+        show Assembly Manifest references. Reuse ratio: 75%.
 
     ${C}build --with-registry${R} ${D}"<feature request>"${R}
-        Same as build, but also checks the registry for missing components
-        and shows the 100% reuse plan.
+        Same, but also searches the Verified Component Registry.
+        Reuse ratio: 100%.
 
     ${C}manufacture${R} ${D}<component-id>${R}
-        Show the manufacturing plan for a missing component: target file,
-        input/output contract, required tests.
+        Show the manufacturing plan for a missing component,
+        or implementation details for an existing one.
 
-    ${C}explain${R}
-        Print the AssemblyKit philosophy.
+    ${C}registry${R}
+        Show Verified Component Registry components and quality metadata.
 
   ${D}Principle: Reuse before manufacture.${R}
 `);
@@ -398,11 +422,11 @@ function cmdUsage() {
 const [,, cmd, ...args] = process.argv;
 
 switch (cmd) {
+  case 'explain':     cmdExplain();               break;
   case 'list':        cmdList();                  break;
   case 'registry':    cmdRegistry();              break;
   case 'build':       cmdBuild(args);             break;
   case 'manufacture': cmdManufacture(args[0]);    break;
-  case 'explain':     cmdExplain();               break;
   case 'help':
   case undefined:     cmdUsage();                 break;
   default:
