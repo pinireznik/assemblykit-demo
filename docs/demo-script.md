@@ -2,107 +2,131 @@
 
 **Audience:** Technical stakeholders, engineering leads, potential adopters  
 **Duration:** ~5 minutes  
-**Setup:** Laravel app running at http://localhost:8000, terminal open in repo root
+**Setup:** Terminal open at the repo root (`assemblykit-demo/`). Laravel app running at http://localhost:8000.
+
+```bash
+# Start the app (if not already running)
+cd demo-crm && php artisan serve
+```
 
 ---
 
 ## Act 1 — The existing app (1 min)
 
-**Narrative:** "Here's a simple CRM. It has companies and employees.
-Nothing fancy — just a working base."
+**Narrative:** "Here's a simple CRM. Companies, employees. A working base."
 
 1. Open http://localhost:8000/dashboard
-   - Point out: total companies, total employees, recently updated list
+   - Point out: total companies card, total employees card, recently updated list
 2. Click through to http://localhost:8000/companies
-   - Point out: 5 companies, employee counts
-3. Click on "Acme Corp" to show the detail page
-   - Point out: employee table, last-updated card
+   - Point out: 5 companies, employee counts, last-updated timestamps
+3. Click on **Acme Corp**
+   - Point out: detail page with stat cards and employee table
 
-**Key message:** This is a real, running Laravel app. Blade views, SQLite,
-standard structure. Nothing invented.
+**Key message:** This is a real Laravel app — SQLite, Blade views, seed data. Nothing invented.
 
 ---
 
 ## Act 2 — The feature request (30 sec)
 
-**Narrative:** "A product manager asks: *Add a section to the dashboard that
-highlights companies that haven't been updated in the last 30 days. We want
-to know which accounts are going stale.*"
+**Narrative:** "The product manager asks for something new."
 
-Display the request in plain text on screen.
+State the request out loud:
 
-**Key message:** A feature request. Traditional AI would immediately start
-generating code. AssemblyKit does something different first.
+> "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days."
+
+**Key message:** A normal feature request. A conventional AI would start generating code immediately. AssemblyKit does something different first.
 
 ---
 
-## Act 3 — The analysis (1 min)
-
-**Narrative:** "Before writing a single line of code, AssemblyKit analyses
-what already exists."
-
-In the terminal, from the repo root:
+## Act 3 — Explain the principle (30 sec)
 
 ```bash
-node assemblykit/scripts/assemblykit.mjs catalog
+node assemblykit/scripts/assemblykit.mjs explain
 ```
 
-Show the output — 9 catalogued components.
+Read the output aloud. Let the line at the bottom land:
 
-**Narrative:** "Every component in this codebase is in the catalog.
-Now let's run the analysis for this specific feature."
+> The best AI-generated code is the code it did not need to generate.
+
+---
+
+## Act 4 — The catalog (45 sec)
+
+**Narrative:** "Before writing anything, AssemblyKit checks what already exists."
 
 ```bash
-node assemblykit/scripts/assemblykit.mjs analyze \
-  assemblykit/manifests/stale-company-dashboard.manifest.yaml
+node assemblykit/scripts/assemblykit.mjs list
 ```
 
-Point out the output:
-- **Reuse scan:** 5 components reused
-- **Manufacturing queue:** 3 components to build
-- **Reuse ratio: 63%**
+Point out:
+- 4 existing components (green ✓) — available for reuse right now
+- 1 missing component (yellow ✦) — identified as needed, not yet built
 
-**Key message:** The system knows what it has. It doesn't start from scratch.
-63% of this feature already exists.
+**Key message:** The catalog makes the codebase's capabilities visible. `company.stale_filter` is already known to be missing — before a single line is written.
 
 ---
 
-## Act 4 — The manifest (1 min)
+## Act 5 — The build analysis (1 min)
 
-Open `assemblykit/manifests/stale-company-dashboard.manifest.yaml` in the editor.
+**Narrative:** "Now let's analyse the feature request."
 
-Walk through the sections:
+```bash
+node assemblykit/scripts/assemblykit.mjs build \
+  "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+```
 
-- `reused_components` — "These five components are used as-is.
-  No new code. They're already there."
-- `manufactured_components` — "These three are net-new.
-  Notice: we considered the registry's stale-alert-banner but it was
-  too heavy for an inline badge. We manufacture a smaller one."
-- `assembly_steps` — "Numbered instructions. Add scope, extend controller,
-  manufacture badge, create partial, extend view. Five steps."
-- `summary` — "62.5% reuse. ~38 lines of net-new code instead of ~388."
+Walk through the output:
 
-**Key message:** The manifest is written before any code is touched.
-It's the contract. The AI agent works from this, not from intuition.
+- **Component search:** 3 found locally, 1 missing
+- **Assembly decision:** Reuse 3, Manufacture 1, **Reuse ratio 75%**
+- **Generated artefacts:** manifest, build plan, manufacturing plan already exist
+
+**Key message:** 75% of this feature already exists. The AI identifies that before touching any code.
 
 ---
 
-## Act 5 — The outcome (1.5 min)
+## Act 6 — The registry (45 sec)
 
-**Narrative:** "The build plan, manufacturing plan, and traceability report
-were generated from the manifest."
+**Narrative:** "Now imagine we have a verified component registry. What changes?"
 
-Open `assemblykit/generated/build-plan.md` — point to the table: reuse vs extend vs manufacture.
+First, show what's in the registry:
 
-Open `assemblykit/generated/traceability.md` — point to the full trace table
-and the dependency graph.
+```bash
+node assemblykit/scripts/assemblykit.mjs registry
+```
 
-**Narrative:** "Every component is accounted for. We know where it came from,
-what was decided, and why. This is an audit trail that existed before
-the first line was written."
+Point out the quality metadata: verified, 24 tests, p95 < 10ms, security reviewed.
 
-**Key message:** AssemblyKit doesn't just help you build faster.
-It gives you a record of *what was built, what was reused, and why*.
+Then re-run the build with registry enabled:
+
+```bash
+node assemblykit/scripts/assemblykit.mjs build --with-registry \
+  "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+```
+
+Point out:
+- Registry search finds `generic.stale_record_detector`
+- **Reuse ratio jumps to 100%**
+- Manufacture drops to 0
+
+**Key message:** Registry components raise the reuse floor. A single verified component can eliminate manufacturing entirely.
+
+---
+
+## Act 7 — The manufacturing plan (45 sec)
+
+**Narrative:** "Back to the MVP — one component needs to be built. Here's what AssemblyKit tells us about it."
+
+```bash
+node assemblykit/scripts/assemblykit.mjs manufacture company.stale_filter
+```
+
+Walk through:
+- **Target file:** `app/Services/StaleCompanyFilter.php`
+- **Contract:** inputs, output, effects — the interface is defined before the code exists
+- **Required tests:** 3 tests specified — the quality bar is set in advance
+
+**Key message:** Manufacturing isn't ad-hoc code generation. It's a contract-first, test-driven process. The component enters the catalog when done — ready to be reused next time.
 
 ---
 
@@ -110,30 +134,48 @@ It gives you a record of *what was built, what was reused, and why*.
 
 **Narrative:** "What we showed:
 
-1. A working app — real code, not a mockup.
-2. A feature request handled with a reuse-first analysis.
-3. A structured manifest that separates reuse from manufacture.
-4. Generated artefacts: build plan, manufacturing plan, traceability.
-5. A CLI that reads the catalog and manifest and explains the plan.
+1. A real app — not a mockup.
+2. A feature request analysed before any code is written.
+3. 75% reuse identified from the local catalog alone.
+4. 100% reuse possible with a verified registry.
+5. The one missing component specified with a clear contract and test obligations.
 
-The principle is simple: **reuse before manufacture**.
-The practice is what AssemblyKit makes systematic."
+The principle is simple: **reuse before manufacture**.  
+AssemblyKit makes that systematic."
 
 ---
 
-## Demo reset instructions
+## All commands (reference)
 
-To reset the database for a clean demo:
+From the repo root (`assemblykit-demo/`):
 
 ```bash
-cd demo-crm
-php artisan migrate:fresh --seed
+# List local components by status
+node assemblykit/scripts/assemblykit.mjs list
+
+# Show verified registry components
+node assemblykit/scripts/assemblykit.mjs registry
+
+# Analyse a feature request (local catalog only)
+node assemblykit/scripts/assemblykit.mjs build \
+  "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+
+# Analyse a feature request (with registry)
+node assemblykit/scripts/assemblykit.mjs build --with-registry \
+  "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+
+# Show manufacturing plan for a missing component
+node assemblykit/scripts/assemblykit.mjs manufacture company.stale_filter
+
+# Print the AssemblyKit philosophy
+node assemblykit/scripts/assemblykit.mjs explain
 ```
 
-To run the CLI tools:
+---
+
+## Reset
 
 ```bash
-# From repo root
-node assemblykit/scripts/assemblykit.mjs catalog
-node assemblykit/scripts/assemblykit.mjs analyze assemblykit/manifests/stale-company-dashboard.manifest.yaml
+# Reset the database
+cd demo-crm && php artisan migrate:fresh --seed
 ```
