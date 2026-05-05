@@ -97,7 +97,7 @@ components:
 
   - id: company.stale_filter
     kind: logic
-    status: missing
+    status: existing
     description: >
       Filters a list of companies down to those that have not been updated
       within a given number of days and optionally meet a minimum employee count.
@@ -119,4 +119,7 @@ components:
       reads:    []   # operates on an already-loaded collection
       writes:   []
       external: []
-    manufacturing_target: app/Services/StaleCompanyFilter.php
+    implementation: app/Services/StaleCompanyFilter.php
+    quality:
+      tests: 5
+      test_file: tests/Feature/StaleCompanyDashboardTest.php

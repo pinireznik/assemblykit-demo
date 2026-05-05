@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Employee;
+use App\Services\StaleCompanyFilter;
 
 class DashboardController extends Controller
 {
@@ -11,11 +12,21 @@ class DashboardController extends Controller
     {
         $totalCompanies = Company::count();
         $totalEmployees = Employee::count();
+
         $recentCompanies = Company::withCount('employees')
             ->orderBy('updated_at', 'desc')
             ->take(5)
             ->get();
 
-        return view('dashboard', compact('totalCompanies', 'totalEmployees', 'recentCompanies'));
+        $needsAttention = (new StaleCompanyFilter)->filter(
+            Company::withCount('employees')->get()
+        );
+
+        return view('dashboard', compact(
+            'totalCompanies',
+            'totalEmployees',
+            'recentCompanies',
+            'needsAttention',
+        ));
     }
 }

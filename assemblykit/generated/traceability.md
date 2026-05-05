@@ -57,8 +57,8 @@ Every decision below is recorded in that file.
 ### `company.stale_filter`
 - **What it does:** Filters a list of companies to those not updated in N days and above a headcount minimum.
 - **Why manufactured:** No local component combines both conditions. The registry's `generic.stale_record_detector` covers staleness but not employee count.
-- **Target file:** `app/Services/StaleCompanyFilter.php`
-- **Status:** Missing — scheduled for manufacture.
+- **Implementation:** `app/Services/StaleCompanyFilter.php`
+- **Status:** Manufactured and implemented. Now in local catalog as `status: existing`.
 
 ---
 
@@ -84,9 +84,11 @@ Every decision below is recorded in that file.
 
 | Test | File | Covers |
 |---|---|---|
-| `stale_company_with_many_employees_is_shown` | `tests/Feature/StaleCompanyDashboardTest.php` | Acme Corp: 45 days, 12 employees → shown |
-| `recent_company_is_not_shown` | `tests/Feature/StaleCompanyDashboardTest.php` | Bright Labs: 5 days, 15 employees → not shown |
-| `stale_company_with_few_employees_is_not_shown` | `tests/Feature/StaleCompanyDashboardTest.php` | Cedar Systems: 60 days, 4 employees → not shown |
+| `stale_company_with_many_employees_is_shown` | `tests/Feature/StaleCompanyDashboardTest.php` | 45 days, 12 employees → shown |
+| `recent_company_with_many_employees_is_not_shown` | `tests/Feature/StaleCompanyDashboardTest.php` | 5 days, 15 employees → not shown (too recent) |
+| `stale_company_with_few_employees_is_not_shown` | `tests/Feature/StaleCompanyDashboardTest.php` | 60 days, 4 employees → not shown (too small) |
+| `dashboard_shows_needing_attention_section` | `tests/Feature/StaleCompanyDashboardTest.php` | HTTP: section visible when stale+large company exists |
+| `dashboard_excludes_recent_companies_from_attention_section` | `tests/Feature/StaleCompanyDashboardTest.php` | HTTP: section hidden when no stale companies |
 
 ---
 
@@ -110,7 +112,7 @@ DashboardController::index()
 │
 ├── company.list                          [REUSED]  app/Models/Company.php
 │     └── employee.count_by_company       [REUSED]  app/Models/Company.php
-│           └── company.stale_filter      [MANUFACTURE] app/Services/StaleCompanyFilter.php
+│           └── company.stale_filter      [MANUFACTURED] app/Services/StaleCompanyFilter.php
 │
 └── dashboard.card                        [REUSED]  components/dashboard-card.blade.php
       inputs: stale_companies count
