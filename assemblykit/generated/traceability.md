@@ -14,7 +14,7 @@ Full trace from feature request to implementation, component by component.
 
 ---
 
-## Assembly manifest
+## Assembly Manifest
 
 `assemblykit/manifests/stale-company-dashboard.manifest.yaml`
 

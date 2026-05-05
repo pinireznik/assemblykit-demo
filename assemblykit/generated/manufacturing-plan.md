@@ -110,11 +110,11 @@ Edge cases to cover:
 
 This component must meet the following bar before being catalogued:
 
-- [ ] All three required tests pass
-- [ ] Edge cases covered
-- [ ] No database queries inside the class (pure collection logic)
-- [ ] `employees_count` loaded before calling — documented in the contract
-- [ ] Class is injectable (no static methods, no direct model calls)
+- [x] All required tests pass (5 tests — 3 unit-level + 2 HTTP)
+- [x] Edge cases covered
+- [x] No database queries inside the class (pure collection logic)
+- [x] `employees_count` loaded before calling — documented in the contract
+- [x] Class is injectable (no static methods, no direct model calls)
 
 ---
 

@@ -75,14 +75,14 @@ The manifest is written before any code is touched. It serves as:
 
 ---
 
-## Component Catalogue
+## Component Catalog
 
-The component catalogue describes the **capabilities** of a codebase, not just
+The component catalog describes the **capabilities** of a codebase, not just
 its files. Each entry records what a component does, what it accepts, what it
 returns, and what side-effects it has — the information an AI agent needs to
 decide whether to reuse it.
 
-There are two catalogue levels.
+There are two catalog levels.
 
 ### Local catalog (`catalog/local.components.yaml`)
 
