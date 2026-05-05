@@ -1,0 +1,46 @@
+# AssemblyKit — Verified Component Registry
+# A shared library of components that have passed a quality gate.
+# Registry components are preferred over manufacturing when a match exists.
+#
+# status: available  — ready to pull into any project
+# quality.verification: verified  — reviewed, tested, benchmarked
+
+version: "1.0"
+source: registry
+registry_url: https://registry.assemblykit.dev  # illustrative — not live
+
+components:
+
+  - id: generic.stale_record_detector
+    kind: logic
+    status: available
+    description: >
+      Filters any list of records down to those where a named timestamp field
+      is older than a given number of days.
+    inputs:
+      - name: records
+        type: list<any>
+        required: true
+      - name: timestamp_field
+        type: string
+        required: true
+        note: name of the date/datetime field to compare, e.g. "updated_at"
+      - name: stale_days
+        type: integer
+        required: true
+    outputs:
+      - name: stale_records
+        type: list<any>
+    effects:
+      reads:    []   # operates on an already-loaded collection
+      writes:   []
+      external: []
+    quality:
+      verification: verified
+      tests: 24
+      benchmark:    "p95 < 10ms for 10 000 records"
+      security:     reviewed
+    composition_notes:
+      - Can be adapted directly for Company updated_at staleness detection.
+      - Does not apply employee-count filtering — combine with company.stale_filter
+        or wrap with a second pass if minimum headcount is required.

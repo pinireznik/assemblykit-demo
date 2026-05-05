@@ -1,0 +1,150 @@
+# AssemblyKit — Assembly Manifest
+# Generated before any code is written.
+# Records every component decision so assembly can be traced end-to-end.
+
+manifest_version: "1.0"
+product:   stale-company-dashboard-card
+created_at: "2026-05-05"
+
+request: >
+  "Add a dashboard card showing companies with more than 10 employees
+  and no updates in 30 days."
+
+principle: reuse_before_manufacture
+
+# ── Required components ────────────────────────────────────────────────────────
+#
+# For each component the assembly needs, AssemblyKit checks the local catalog
+# first, then the registry, then schedules manufacturing if nothing fits.
+
+required_components:
+
+  - id: company.list
+    decision: reuse
+    source:   local
+    reason:   Existing component retrieves all companies. No changes needed.
+
+  - id: employee.count_by_company
+    decision: reuse
+    source:   local
+    reason:   Existing component returns employee count for a given company.
+
+  - id: company.stale_filter
+    decision: manufacture
+    source:   missing
+    reason: >
+      No local component currently combines stale updated_at filtering
+      with a minimum employee count threshold. Must be manufactured.
+    manufacturing_target: app/Services/StaleCompanyFilter.php
+
+  - id: dashboard.card
+    decision: reuse
+    source:   local
+    reason:   Existing UI component renders any labelled stat card on the dashboard.
+
+# ── Assembly plan ──────────────────────────────────────────────────────────────
+#
+# Ordered steps that wire the components together to deliver the feature.
+# No net-new code at the assembly layer — only wiring.
+
+assembly:
+
+  - step: 1
+    action:    get_companies
+    component: company.list
+    produces:  companies          # list<Company>
+
+  - step: 2
+    action:    count_employees
+    component: employee.count_by_company
+    for_each:  company in companies
+    produces:  companies_with_counts   # list<Company> with employee count loaded
+
+  - step: 3
+    action:    filter_candidates
+    component: company.stale_filter
+    inputs:
+      companies:          companies_with_counts
+      stale_days:         30
+      min_employee_count: 10
+    produces:  stale_companies    # list<Company>
+
+  - step: 4
+    action:    render_dashboard_card
+    component: dashboard.card
+    inputs:
+      label: "Companies needing attention"
+      value: "{{ count(stale_companies) }}"
+      sub:   "Not updated in 30+ days · 10+ employees"
+    produces:  rendered_card      # html
+
+# ── Quality obligations ────────────────────────────────────────────────────────
+
+quality:
+  tests:
+    - id: stale_company_with_many_employees_is_shown
+      description: >
+        A company last updated 45 days ago with 12 employees must appear
+        in the dashboard card result.
+
+    - id: recent_company_is_not_shown
+      description: >
+        A company last updated 5 days ago must not appear regardless of
+        employee count.
+
+    - id: stale_company_with_few_employees_is_not_shown
+      description: >
+        A company last updated 60 days ago with only 4 employees must not
+        appear — it is stale but below the minimum employee count.
+
+# ── Metrics ────────────────────────────────────────────────────────────────────
+
+metrics:
+  reuse_count:       3
+  manufactured_count: 1
+  reuse_ratio:       "75%"
+
+# ── Registry-enhanced plan ─────────────────────────────────────────────────────
+#
+# Future-state alternative: what happens when the registry has a matching
+# component. Shown here to illustrate registry value — not yet implemented.
+
+registry_enhanced_plan:
+
+  description: >
+    When generic.stale_record_detector is available from the registry,
+    it can replace the core timestamp logic inside company.stale_filter.
+    The employee-count filter is handled as an assembly-level step, not
+    a separate manufactured component.
+
+  required_components:
+
+    - id: company.list
+      decision: reuse
+      source:   local
+
+    - id: employee.count_by_company
+      decision: reuse
+      source:   local
+
+    - id: generic.stale_record_detector
+      decision: reuse
+      source:   registry
+      reason: >
+        Registry component filters any collection by timestamp age.
+        Wrapping it with a simple count filter at assembly level replaces
+        the need to manufacture company.stale_filter entirely.
+
+    - id: dashboard.card
+      decision: reuse
+      source:   local
+
+  metrics:
+    reuse_count:        4
+    manufactured_count: 0
+    reuse_ratio:        "100%"
+
+  note: >
+    In this MVP the registry is illustrative and the app still uses the
+    locally manufactured StaleCompanyFilter service. This plan documents
+    the target state once the registry is live.

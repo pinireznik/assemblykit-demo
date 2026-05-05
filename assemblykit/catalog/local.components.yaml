@@ -1,0 +1,122 @@
+# AssemblyKit — Local Component Catalog
+# Describes the functional capabilities of demo-crm.
+# Each component is characterised by kind, interface, and effects —
+# not just by its file location.
+#
+# kind:
+#   data    — reads or writes persistent state
+#   logic   — transforms or filters data without I/O
+#   ui      — renders output to the user
+#
+# status:
+#   existing  — implemented and available for reuse
+#   missing   — identified as needed; manufacturing target
+
+version: "1.0"
+source: local
+project: demo-crm
+
+components:
+
+  # ── Data components ─────────────────────────────────────────────────────────
+
+  - id: company.list
+    kind: data
+    status: existing
+    description: Returns all companies in the CRM.
+    inputs: []
+    outputs:
+      - name: companies
+        type: list<Company>
+    effects:
+      reads:    [companies]
+      writes:   []
+      external: []
+    implementation: app/Models/Company.php  # Company::all() / Company::withCount()
+
+  - id: company.get
+    kind: data
+    status: existing
+    description: Returns a single company by ID.
+    inputs:
+      - name: company_id
+        type: integer
+        required: true
+    outputs:
+      - name: company
+        type: Company
+    effects:
+      reads:    [companies]
+      writes:   []
+      external: []
+    implementation: app/Models/Company.php  # route model binding via CompanyController
+
+  - id: employee.count_by_company
+    kind: data
+    status: existing
+    description: Returns the number of employees belonging to a given company.
+    inputs:
+      - name: company
+        type: Company
+        required: true
+    outputs:
+      - name: count
+        type: integer
+    effects:
+      reads:    [employees]
+      writes:   []
+      external: []
+    implementation: app/Models/Company.php  # $company->employees()->count() / withCount('employees')
+
+  # ── UI components ────────────────────────────────────────────────────────────
+
+  - id: dashboard.card
+    kind: ui
+    status: existing
+    description: Displays a labelled stat card on any dashboard page.
+    inputs:
+      - name: label
+        type: string
+        required: true
+      - name: value
+        type: string|integer
+        required: true
+      - name: sub
+        type: string
+        required: false
+    outputs:
+      - name: rendered_card
+        type: html
+    effects:
+      reads:    []
+      writes:   []
+      external: []
+    implementation: resources/views/components/dashboard-card.blade.php
+
+  # ── Logic components ─────────────────────────────────────────────────────────
+
+  - id: company.stale_filter
+    kind: logic
+    status: missing
+    description: >
+      Filters a list of companies down to those that have not been updated
+      within a given number of days and optionally meet a minimum employee count.
+    inputs:
+      - name: companies
+        type: list<Company>
+        required: true
+      - name: stale_days
+        type: integer
+        required: true
+      - name: min_employee_count
+        type: integer
+        required: false
+        default: 0
+    outputs:
+      - name: stale_companies
+        type: list<Company>
+    effects:
+      reads:    []   # operates on an already-loaded collection
+      writes:   []
+      external: []
+    manufacturing_target: app/Services/StaleCompanyFilter.php
