@@ -1,0 +1,51 @@
+# AssemblyKit — Manifest Ledger
+#
+# Append-only log of every completed assembly.
+# Each entry records the exact component versions, trust levels, and source
+# used at assembly time — the basis for recall scanning and audit.
+#
+# This is a simulated ledger. In production this would be cryptographically
+# signed and immutable.
+
+version: "1.0"
+format: assemblykit-manifest-ledger
+
+assemblies:
+
+  - id: asm-2026-001
+    timestamp: "2026-05-05T14:05:00Z"
+    product: demo-crm
+    feature: "Stale Company Dashboard Card"
+    profile: fort-knox
+    manifest: assemblykit/manifests/stale-company-dashboard.manifest.yaml
+    path: registry-enhanced
+    note: >
+      Assembly recorded under the fort-knox profile using the registry-enhanced
+      path. generic.stale_record_detector@2.1.0 was the highest-scored
+      certified component at assembly time. Subsequently recalled —
+      see recalls.yaml.
+    components:
+      - id: company.list
+        version: "1.0.0"
+        source: local
+        trust_level: verified
+        decision: reuse
+
+      - id: employee.count_by_company
+        version: "1.0.0"
+        source: local
+        trust_level: verified
+        decision: reuse
+
+      - id: dashboard.card
+        version: "1.1.0"
+        source: local
+        trust_level: verified
+        decision: reuse
+
+      - id: generic.stale_record_detector
+        version: "2.1.0"
+        source: registry
+        trust_level: verified
+        decision: reuse
+        note: "RECALLED — CVE-DEMO-2026-001. Replace with generic.stale_record_detector@2.1.1."

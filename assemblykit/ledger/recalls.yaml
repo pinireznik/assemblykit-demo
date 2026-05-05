@@ -1,0 +1,30 @@
+# AssemblyKit — Component Recalls
+#
+# Records components that have been recalled due to security vulnerabilities,
+# critical bugs, or licensing issues. Any assembly that pins a recalled
+# component version must be reassembled.
+#
+# Recall scanning: node assemblykit/scripts/assemblykit.mjs recall <component@version>
+
+version: "1.0"
+format: assemblykit-recalls
+
+recalls:
+
+  - component: generic.stale_record_detector
+    version: "2.1.0"
+    cve: CVE-DEMO-2026-001
+    severity: high
+    disclosed: "2026-05-10T09:00:00Z"
+    reason: >
+      Security vulnerability in timestamp parsing. A crafted non-UTC timezone
+      offset can cause the staleness threshold to be bypassed, allowing records
+      that should be flagged to appear clean. Affects all consumers of the
+      component that process user-supplied or externally-sourced timestamps.
+    affected_assemblies:
+      - asm-2026-001
+    replacement: "generic.stale_record_detector@2.1.1"
+    replacement_notes: >
+      2.1.1 is a drop-in replacement. No API changes. Update the pinned version
+      in your manifest and reassemble. Run the existing test suite to verify.
+    action_required: reassemble

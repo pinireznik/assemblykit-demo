@@ -1,7 +1,7 @@
-# AssemblyKit — 5-Minute Demo Script
+# AssemblyKit — 7-Minute Demo Script
 
 **Audience:** Technical stakeholders, engineering leads, potential adopters  
-**Duration:** ~5 minutes  
+**Duration:** ~7 minutes  
 **Setup:** Terminal open at repo root (`assemblykit-demo/`). Browser ready.
 
 ```bash
@@ -15,197 +15,184 @@ cd demo-crm && php artisan serve
 
 > "Today AI coding tools often manufacture code immediately. AssemblyKit shows
 > a different model: design the product, search for components, reuse what
-> exists, manufacture only what is missing, then assemble."
+> exists, manufacture only what is missing, then assemble.
+>
+> And then — because this is a supply chain — track what you shipped, recall
+> what breaks, and promote what is proven."
 
 ---
 
-## Step 1 — Show the CRM before the feature  *(~45 sec)*
+## Step 1 — The app  *(~45 sec)*
 
 Open http://localhost:8000/dashboard
 
 Point out:
 - Two stat cards: Total Companies, Total Employees
-- Recently Updated table below
+- Recently Updated table
 
-Go to http://localhost:8000/companies
+Go to http://localhost:8000/companies — point out Acme Corp: 12 employees, updated 45 days ago. Nothing flags it yet.
 
-Point out:
-- Five companies, employee counts, last-updated timestamps
-- Acme Corp: 12 employees, updated 45 days ago — nothing flags it yet
-
-Click **Acme Corp** — show the detail page.
-
-> "This is a real Laravel app. SQLite, Blade views, seeded data. Nothing invented."
+> "Real Laravel app. SQLite, Blade, seeded data. The feature request:
+> 'Add a dashboard card showing companies with more than 10 employees
+> and no updates in 30 days.'"
 
 ---
 
-## Step 2 — State the feature request  *(~20 sec)*
-
-Read out loud:
-
-> "Add a dashboard card showing companies with more than 10 employees
-> and no updates in 30 days."
-
-> "A conventional AI tool would start generating code right now. AssemblyKit
-> does something different first."
-
----
-
-## Step 3 — Explain the principle  *(~30 sec)*
+## Step 2 — Explain the principle  *(~20 sec)*
 
 ```bash
 node assemblykit/scripts/assemblykit.mjs explain
 ```
 
-Read the output. Let the last line land.
+Let the last line land.
 
 ---
 
-## Step 4 — Show the component catalog  *(~45 sec)*
+## Step 3 — The component catalog  *(~30 sec)*
 
 ```bash
 node assemblykit/scripts/assemblykit.mjs list
 ```
 
-Point out:
 - Green checkmarks — components available for reuse right now
-- Each one has a kind (`data`, `logic`, `ui`) and a description
+- Version, trust level, selection score next to each one
 
 > "The catalog makes the codebase's capabilities visible as a structured
 > inventory. Before writing anything, we know what we have."
 
 ---
 
-## Step 5 — Analyse the feature request  *(~1 min)*
-
-```bash
-node assemblykit/scripts/assemblykit.mjs build "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
-```
-
-Walk through the output section by section:
-
-- **Component search:** three components found in the local catalog
-- **Missing:** `company.stale_filter` — identified before a line is written
-- **Assembly decision:** Reuse 3, Manufacture 1, **reuse ratio 75%**
-- **Assembly Manifest:** the YAML file that records every decision
-
-Open the manifest:
-
-```bash
-cat assemblykit/manifests/stale-company-dashboard.manifest.yaml
-```
-
-> "The Assembly Manifest is written before any code is touched. It is the
-> contract between the AI agent and the developer."
-
-Open the assembly graph:
-
-```bash
-cat assemblykit/generated/component-graph.md
-```
-
-Point out (or render in a Markdown viewer):
-- Green nodes — reused from the local catalog
-- Yellow node — `company.stale_filter`, the one manufactured component
-- Blue node — the Assembly Manifest connecting request to components
-- Data flows: `company.list` and `employee.count_by_company` feed into `company.stale_filter`, which feeds `dashboard.card`
-
-> "This is the complete picture of the feature. Three reuses, one manufacture, one assembly."
-
----
-
-## Step 6 — Show the manufactured component  *(~30 sec)*
-
-```bash
-node assemblykit/scripts/assemblykit.mjs manufacture company.stale_filter
-```
-
-The component is already implemented. The CLI shows:
-- Implementation file
-- Test coverage
-
-Open the file:
-
-```bash
-cat demo-crm/app/Services/StaleCompanyFilter.php
-```
-
-> "This is the one net-new file for this entire feature. Everything else was reuse."
-
----
-
-## Step 7 — Run the tests  *(~20 sec)*
-
-```bash
-cd demo-crm && php artisan test
-```
-
-Seven tests pass. Point out:
-
-- Three unit-level tests on `StaleCompanyFilter` directly
-- Two HTTP tests on the dashboard route
-
-> "The quality bar was defined in the Assembly Manifest before the component was built."
-
----
-
-## Step 8 — Show the final dashboard  *(~20 sec)*
-
-Open http://localhost:8000/dashboard
-
-Point out:
-- Third stat card: **Needing Attention — 2**
-- The "Companies needing attention" table: Acme Corp and Delta Works
-- Amber badges showing days since last update
-
-> "The feature is live. Two companies flagged. The CRM now surfaces the signal
-> the product manager asked for."
-
----
-
-## Step 9 — The registry changes everything  *(~45 sec)*
-
-```bash
-cd .. && node assemblykit/scripts/assemblykit.mjs build --with-registry "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
-```
-
-Point out:
-- Registry search finds `generic.stale_record_detector`
-- Quality metadata: verified, 24 tests, p95 < 10ms, security reviewed
-- **Reuse ratio jumps to 100%**
-- Manufacture drops to zero
-
-> "With a verified registry, this feature requires no manufacturing at all.
-> The AI assembles entirely from existing, tested parts."
-
-Show the registry:
+## Step 4 — The registry  *(~45 sec)*
 
 ```bash
 node assemblykit/scripts/assemblykit.mjs registry
 ```
 
----
+Walk through the four versions of `generic.stale_record_detector`:
 
-## Step 10 — The vision  *(~30 sec)*
+- **1.2.0** — experimental, score 61, no security review
+- **2.1.0** — recalled (CVE-DEMO-2026-001), score 0 — red, rejected by all profiles
+- **2.1.1** — certified, score 94, security patched — the safe choice
+- **3.0.0-beta** — experimental, score 72, fastest (p95 < 5ms), unsigned
 
-> "What you saw was a local catalog and a hand-crafted registry entry.
-> The real vision is larger:
->
-> Every project scans its codebase and builds a catalog automatically.
-> Every organisation maintains a verified registry shared across teams.
-> A public marketplace of production-grade components raises the floor further.
->
-> Engineers work at the assembly level. Manufacturing becomes rare —
-> reserved for the genuinely novel delta that no existing component covers.
->
-> The AI's job is not to generate code. It is to find the right components
-> and assemble them correctly."
+> "This is a component market. Four candidates. Different trust levels,
+> different trade-offs. The profile decides which one is selected."
 
 ---
 
-## Closing
+## Step 5 — Build without registry  *(~45 sec)*
 
-> "The best AI-generated code is the code it did not need to generate."
+```bash
+node assemblykit/scripts/assemblykit.mjs build "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+```
+
+- Three components found in the local catalog
+- `company.stale_filter` — identified as missing before a line is written
+- **Reuse 3, Manufacture 1 — 75% reuse ratio**
+
+> "The Assembly Manifest is written before any code is touched. It is the
+> contract between the agent and the developer."
+
+---
+
+## Step 6 — Build with registry, fort-knox profile  *(~45 sec)*
+
+```bash
+node assemblykit/scripts/assemblykit.mjs build --with-registry --profile fort-knox "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+```
+
+Walk through the profile selection:
+
+- fort-knox: security first — requires certified + security-reviewed
+- 1.2.0 rejected (no security review), 2.1.0 rejected (recalled), 3.0.0-beta rejected (experimental)
+- **2.1.1 selected — score 94, certified, security patched**
+- **Reuse 4, Manufacture 0 — 100% reuse ratio**
+
+> "With a verified registry and a trust profile, this feature requires no
+> manufacturing at all. The AI assembles entirely from known-good parts."
+
+Try the other profiles:
+
+```bash
+node assemblykit/scripts/assemblykit.mjs registry --profile high-scale
+node assemblykit/scripts/assemblykit.mjs registry --profile rapid-prototype
+```
+
+> "Same components. Different risk tolerance. Different selection. Every
+> decision is recorded — the profile is in the manifest."
+
+---
+
+## Step 7 — The ledger  *(~30 sec)*
+
+```bash
+node assemblykit/scripts/assemblykit.mjs ledger
+```
+
+- Assembly `asm-2026-001` — product, feature, profile, timestamp
+- Every pinned component: exact version, source, trust level, decision
+- One entry is flagged RECALLED
+
+> "The ledger is the audit trail. Every assembly ever run, every component
+> version ever pinned. Append-only."
+
+---
+
+## Step 8 — Recall  *(~30 sec)*
+
+```bash
+node assemblykit/scripts/assemblykit.mjs recall generic.stale_record_detector@2.1.0
+```
+
+- CVE-DEMO-2026-001: timestamp parsing vulnerability
+- **Scans the ledger — asm-2026-001 is affected**
+- Replacement: 2.1.1 (drop-in, no API changes)
+
+> "In a traditional project, finding which products use a vulnerable
+> component might take days — or never happen at all. Here it takes
+> one command."
+
+---
+
+## Step 9 — Reassemble  *(~30 sec)*
+
+```bash
+node assemblykit/scripts/assemblykit.mjs reassemble asm-2026-001
+```
+
+- Preserves the original fort-knox profile
+- Replaces 2.1.0 → 2.1.1
+- All other pinned components confirmed valid
+
+> "From recall disclosure to reassembly plan — seconds. The profile
+> is preserved. The rationale is traceable."
+
+---
+
+## Step 10 — Promote  *(~20 sec)*
+
+```bash
+node assemblykit/scripts/assemblykit.mjs promote company.stale_filter
+```
+
+- Current level: manufactured
+- Next level: verified
+- Checklist: tests ≥ 10 (currently 5), security review, benchmark, signature
+
+> "Manufactured components don't disappear into the codebase.
+> They have a promotion path — to verified, then certified,
+> then eligible for the shared registry."
+
+---
+
+## Closing  *(~15 sec)*
+
+> "The catalog is the bill of materials.
+> The manifest is the build specification.
+> The ledger is the audit trail.
+> The recall system closes the loop.
+>
+> The best AI-generated code is the code it did not need to generate."
 
 ---
 
@@ -214,17 +201,32 @@ node assemblykit/scripts/assemblykit.mjs registry
 Run from repo root (`assemblykit-demo/`):
 
 ```bash
+# Principle
 node assemblykit/scripts/assemblykit.mjs explain
 
+# Catalog
 node assemblykit/scripts/assemblykit.mjs list
 
+# Registry — all versions
+node assemblykit/scripts/assemblykit.mjs registry
+
+# Registry — with profile
+node assemblykit/scripts/assemblykit.mjs registry --profile fort-knox
+node assemblykit/scripts/assemblykit.mjs registry --profile high-scale
+node assemblykit/scripts/assemblykit.mjs registry --profile rapid-prototype
+
+# Build
 node assemblykit/scripts/assemblykit.mjs build "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
+node assemblykit/scripts/assemblykit.mjs build --with-registry --profile fort-knox "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
 
-node assemblykit/scripts/assemblykit.mjs build --with-registry "Add a dashboard card showing companies with more than 10 employees and no updates in 30 days"
-
+# Manufacture
 node assemblykit/scripts/assemblykit.mjs manufacture company.stale_filter
 
-node assemblykit/scripts/assemblykit.mjs registry
+# Supply chain
+node assemblykit/scripts/assemblykit.mjs ledger
+node assemblykit/scripts/assemblykit.mjs recall generic.stale_record_detector@2.1.0
+node assemblykit/scripts/assemblykit.mjs reassemble asm-2026-001
+node assemblykit/scripts/assemblykit.mjs promote company.stale_filter
 ```
 
 Reset the database:

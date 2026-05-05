@@ -1,18 +1,12 @@
 # AssemblyKit — Local Component Catalog
 # Describes the functional capabilities of demo-crm.
-# Each component is characterised by kind, interface, and effects —
-# not just by its file location.
 #
-# kind:
-#   data    — reads or writes persistent state
-#   logic   — transforms or filters data without I/O
-#   ui      — renders output to the user
-#
-# status:
-#   existing  — implemented and available for reuse
-#   missing   — identified as needed; manufacturing target
+# kind:        data | logic | ui
+# status:      existing | missing
+# trust_level: verified | manufactured | experimental | legacy
+# signature:   demo-signed | unsigned
 
-version: "1.0"
+version: "2.0"
 source: local
 project: demo-crm
 
@@ -22,7 +16,11 @@ components:
 
   - id: company.list
     kind: data
+    version: "1.0.0"
     status: existing
+    trust_level: verified
+    selection_score: 85
+    signature: demo-signed
     description: Returns all companies in the CRM.
     inputs: []
     outputs:
@@ -32,11 +30,18 @@ components:
       reads:    [companies]
       writes:   []
       external: []
-    implementation: app/Models/Company.php  # Company::all() / Company::withCount()
+    implementation: app/Models/Company.php
+    quality:
+      tests: 2
+      test_file: tests/Feature/ExampleTest.php
 
   - id: company.get
     kind: data
+    version: "1.0.0"
     status: existing
+    trust_level: verified
+    selection_score: 85
+    signature: demo-signed
     description: Returns a single company by ID.
     inputs:
       - name: company_id
@@ -49,11 +54,15 @@ components:
       reads:    [companies]
       writes:   []
       external: []
-    implementation: app/Models/Company.php  # route model binding via CompanyController
+    implementation: app/Models/Company.php
 
   - id: employee.count_by_company
     kind: data
+    version: "1.0.0"
     status: existing
+    trust_level: verified
+    selection_score: 85
+    signature: demo-signed
     description: Returns the number of employees belonging to a given company.
     inputs:
       - name: company
@@ -66,13 +75,17 @@ components:
       reads:    [employees]
       writes:   []
       external: []
-    implementation: app/Models/Company.php  # $company->employees()->count() / withCount('employees')
+    implementation: app/Models/Company.php
 
   # ── UI components ────────────────────────────────────────────────────────────
 
   - id: dashboard.card
     kind: ui
+    version: "1.1.0"
     status: existing
+    trust_level: verified
+    selection_score: 90
+    signature: demo-signed
     description: Displays a labelled stat card on any dashboard page.
     inputs:
       - name: label
@@ -92,12 +105,19 @@ components:
       writes:   []
       external: []
     implementation: resources/views/components/dashboard-card.blade.php
+    quality:
+      tests: 1
+      test_file: tests/Feature/ExampleTest.php
 
   # ── Logic components ─────────────────────────────────────────────────────────
 
   - id: company.stale_filter
     kind: logic
+    version: "1.0.0"
     status: existing
+    trust_level: manufactured
+    selection_score: 78
+    signature: unsigned
     description: >
       Filters a list of companies down to those that have not been updated
       within a given number of days and optionally meet a minimum employee count.
@@ -116,10 +136,22 @@ components:
       - name: stale_companies
         type: list<Company>
     effects:
-      reads:    []   # operates on an already-loaded collection
+      reads:    []
       writes:   []
       external: []
     implementation: app/Services/StaleCompanyFilter.php
     quality:
       tests: 5
       test_file: tests/Feature/StaleCompanyDashboardTest.php
+    promotion_path:
+      current_level: manufactured
+      next_level: verified
+      required:
+        - tests >= 10 (currently 5)
+        - security review completed
+        - benchmark documented
+        - signature: demo-signed
+      to_reach_certified:
+        - all verified requirements
+        - external audit
+        - registry submission approved
